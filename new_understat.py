@@ -5,7 +5,7 @@ from fuzzywuzzy import process
 def search_by_name(player_name: str): 
     leagues = ["EPL", "Bundesliga", "La_Liga", "Serie_A", "Ligue_1"]
     for league in leagues:
-        league_player_data = understat.league(league=league).get_player_data("2024")
+        league_player_data = understat.league(league=league).get_player_data("2025")
         for player in league_player_data:
             if player["player_name"] == player_name:
                 print(f"{player_name}'s Understat ID is {player["id"]}")
@@ -16,7 +16,7 @@ def fuzzy_matches(player_name: str):
     leagues = ["EPL", "Bundesliga", "La_Liga", "Serie_A", "Ligue_1"]
     closest = []
     for league in leagues:
-        league_player_data = understat.league(league=league).get_player_data("2024")       
+        league_player_data = understat.league(league=league).get_player_data("2025")       
         names = [item["player_name"] for item in league_player_data]
         close = [name for name in process.extract(player_name, names) if name[1] >= 80]
         for item in close:
@@ -87,5 +87,6 @@ if __name__ == "__main__":
     print("Extracting data...") 
     
     soup = create_table(player_id)
+
 
     write_to_file(soup)
