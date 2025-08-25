@@ -1,27 +1,32 @@
 from understatapi import UnderstatClient
-from bs4 import BeautifulSoup
 from fuzzywuzzy import process
+from prettytable import PrettyTable
 
-def search_by_name(player_name: str): 
-    leagues = ["EPL", "Bundesliga", "La_Liga", "Serie_A", "Ligue_1"]
-    for league in leagues:
-        league_player_data = understat.league(league=league).get_player_data("2025")
-        for player in league_player_data:
-            if player["player_name"] == player_name:
-                print(f"{player_name}'s Understat ID is {player["id"]}")
-                return player["id"]
+def extract_league_data():
+    league_names = ["EPL", "Bundesliga", "La_Liga", "Serie_A", "Ligue_1"]
+    leagues = {}
+    for league in league_names:
+        leagues[league] = understat.league(league=league).get_player_data("2025")
+    return leagues
 
-def fuzzy_matches(player_name: str):
+def search_by_name(player_name: str, leagues: dict):
+    for league in leagues.values():
+        for player in league:
+            if player["player_name"].lower() == player_name.lower():
+                print("")
+                print(f"{player_name.title()} (Understat ID: {player["id"]})")
+                recent_seasons = understat.player(player["id"]).get_season_data()["season"][:5]
+                return recent_seasons
+
+def fuzzy_matches(player_name: str, leagues: dict):
+    print("")
     print("Checking possible matches...")
-    leagues = ["EPL", "Bundesliga", "La_Liga", "Serie_A", "Ligue_1"]
     closest = []
-    for league in leagues:
-        league_player_data = understat.league(league=league).get_player_data("2025")       
-        names = [item["player_name"] for item in league_player_data]
+    for league in leagues.values():
+        names = [player["player_name"] for player in league]
         close = [name for name in process.extract(player_name, names) if name[1] >= 80]
         for item in close:
             closest.append(item)
-
     closest.sort(reverse=True, key=lambda x: x[1]) # sort matches by closest matches
     closest = closest[:5]
     for i in range(len(closest)):
@@ -32,36 +37,16 @@ def fuzzy_matches(player_name: str):
     except:
         return False
 
-def create_table(player_id: str):
-    recent_seasons = understat.player(player_id).get_season_data()["season"][:5]
-
-    soup = BeautifulSoup('<html><body><table border="1"></table></body></html>', 'html.parser')
-    table = soup.find('table') # finds the first <table> tag in the HTML, saves it to table variable
-
-    if recent_seasons:
-        headers = ['season', 'team', 'games', 'goals', 'assists']
-        header_row = soup.new_tag('tr') # initialises header row in the table
+def make_table(recent_seasons: dict):
+    headers = ["season", "team", "games", "goals", "assists"]
+    table = PrettyTable(headers)
+    for season in recent_seasons:
+        row = []
         for header in headers:
-            th = soup.new_tag('th')
-            th.string = header # adds string to the header tag
-            header_row.append(th) # adds the header tag to the header row
-        table.append(header_row)
+            row.append(season[header])
+        table.add_row(row)
+    return table
 
-        # Add data rows
-        for season in recent_seasons:
-            row = soup.new_tag('tr')
-            for key in headers:
-                td = soup.new_tag('td')
-                td.string = str(season.get(key, 'N/A')) # gets season, team etc from the season data
-                row.append(td)
-            table.append(row)
-        
-    return soup
-
-def write_to_file(soup: BeautifulSoup):
-    with open("table.html", "w") as file:
-        file.write(str(soup.prettify()))
-    print("Data table succesfully written to 'table.html'")
 
 if __name__ == "__main__":
     
@@ -69,24 +54,24 @@ if __name__ == "__main__":
     
     while True:
         player_name = input("Please input a player name: ")
-        print("Searching player database...")
-        player_id = search_by_name(player_name)
 
-        if player_id:
+        print("")
+        print("Searching player database...")
+
+        leagues = extract_league_data()
+
+        seasons = search_by_name(player_name, leagues)
+
+        if seasons:
             break
 
-        match = fuzzy_matches(player_name)
+        match = fuzzy_matches(player_name, leagues)
 
         if match:
-            player_id = search_by_name(match)
+            seasons = search_by_name(match, leagues)
             break
 
         print("Please try again.")
         print(" ")
-    
-    print("Extracting data...") 
-    
-    soup = create_table(player_id)
 
-
-    write_to_file(soup)
+    print(make_table(seasons))
