@@ -47,7 +47,6 @@ def make_table(recent_seasons: dict):
         table.add_row(row)
     return table
 
-
 if __name__ == "__main__":
     
     understat = UnderstatClient()
@@ -75,3 +74,4 @@ if __name__ == "__main__":
         print(" ")
 
     print(make_table(seasons))
+
